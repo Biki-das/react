@@ -11,6 +11,8 @@ import * as React from 'react';
 import {Fragment, useContext, useEffect, useRef, useEffectEvent} from 'react';
 import {ModalDialog} from '../ModalDialog';
 import {ProfilerContext} from './ProfilerContext';
+import Button from '../Button';
+import ButtonIcon from '../ButtonIcon';
 import TabBar from '../TabBar';
 import ClearProfilingDataButton from './ClearProfilingDataButton';
 import CommitFlamegraph from './CommitFlamegraph';
@@ -213,6 +215,16 @@ function Profiler(_: {}) {
             {isLegacyProfilerSelected && didRecordCommits && (
               <Fragment>
                 <div className={styles.VRule} />
+                <Button
+                  onClick={
+                    isSearchInputVisible ? hideSearchInput : showSearchInput
+                  }
+                  title={`Search components in this commit (${
+                    isMac ? '⌘' : 'Ctrl+'
+                  }F)`}
+                  data-testname="ProfilerSearchButton">
+                  <ButtonIcon type="search" />
+                </Button>
                 <SnapshotSelector />
               </Fragment>
             )}

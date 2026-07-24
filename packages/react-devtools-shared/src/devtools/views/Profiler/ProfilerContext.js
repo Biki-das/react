@@ -14,6 +14,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useDeferredValue,
   useMemo,
   useState,
   useEffect,
@@ -96,6 +97,7 @@ export type Context = {
   searchIndex: number,
   goToNextSearchResult(): void,
   goToPreviousSearchResult(): void,
+  goToSearchResult: (index: number) => void,
 };
 
 const ProfilerContext: ReactContext<Context> = createContext<Context>(
@@ -313,61 +315,65 @@ function ProfilerContextController({children}: Props): React.Node {
     [rootID, selectedCommitIndex, didRecordCommits, profilerStore],
   );
 
+  // Keep the controlled input update synchronous (see setSearchText), but
+  // derive matches from a *deferred* value so the tree walk runs at transition
+  // priority and never blocks typing. Deriving via a memo also keeps results
+  // scoped to the current commit for free (findMatches tracks selectedCommitIndex).
+  const deferredSearchText = useDeferredValue(searchText);
   const searchResults = useMemo<Array<SearchResult>>(
-    () => findMatches(searchText),
-    [findMatches, searchText],
+    () => findMatches(deferredSearchText),
+    [findMatches, deferredSearchText],
   );
 
-  const selectMatch = useCallback(
-    (matches: Array<SearchResult>, index: number) => {
-      if (index >= 0 && index < matches.length) {
-        selectFiber(matches[index].id, matches[index].name);
-      }
-    },
-    [selectFiber],
-  );
-
-  const setSearchText = useCallback(
-    (text: string) => {
-      setSearchTextState(text);
-      // Match eagerly to jump to the first result; the memo above only updates
-      // on the next render.
-      const matches = findMatches(text);
-      setSearchIndex(matches.length === 0 ? -1 : 0);
-      if (matches.length > 0) {
-        selectMatch(matches, 0);
-      } else if (text !== '') {
-        // A non-empty query with no matches: clear the now-stale selection so
-        // the chart isn't left zoomed on an unrelated fiber.
-        selectFiber(null, null);
-      }
-    },
-    [findMatches, selectMatch, selectFiber],
-  );
+  const setSearchText = useCallback((text: string) => {
+    // Synchronous so the input stays responsive; searchResults recomputes off
+    // the deferred value at transition priority.
+    setSearchTextState(text);
+    setSearchIndex(text === '' ? -1 : 0);
+  }, []);
 
   const goToNextSearchResult = useCallback(() => {
-    const count = searchResults.length;
-    if (count === 0) {
-      return;
-    }
-    // Clamp: the selected commit may have changed and shrunk the result set.
-    const current = searchIndex < 0 || searchIndex >= count ? -1 : searchIndex;
-    const nextIndex = current < 0 ? 0 : (current + 1) % count;
-    setSearchIndex(nextIndex);
-    selectMatch(searchResults, nextIndex);
-  }, [searchResults, searchIndex, selectMatch]);
+    setSearchIndex(prevIndex => {
+      const count = searchResults.length;
+      if (count === 0) {
+        return -1;
+      }
+      return prevIndex < 0 || prevIndex >= count ? 0 : (prevIndex + 1) % count;
+    });
+  }, [searchResults.length]);
 
   const goToPreviousSearchResult = useCallback(() => {
-    const count = searchResults.length;
-    if (count === 0) {
+    setSearchIndex(prevIndex => {
+      const count = searchResults.length;
+      if (count === 0) {
+        return -1;
+      }
+      const current = prevIndex < 0 || prevIndex >= count ? count : prevIndex;
+      return current <= 0 ? count - 1 : current - 1;
+    });
+  }, [searchResults.length]);
+
+  const goToSearchResult = useCallback(
+    (index: number) => setSearchIndex(index),
+    [],
+  );
+
+  // Selection follows the current (results, index). Because results are
+  // produced at transition priority, selection reacts to them here rather than
+  // in the input handler; this also re-selects the match after switching
+  // commits, and clears a stale selection when a query has no matches.
+  useEffect(() => {
+    if (searchResults.length === 0) {
+      if (deferredSearchText !== '') {
+        selectFiber(null, null);
+      }
       return;
     }
-    const current =
-      searchIndex < 0 || searchIndex >= count ? count : searchIndex;
-    const prevIndex = current <= 0 ? count - 1 : current - 1;
-    setSearchIndex(prevIndex);
-    selectMatch(searchResults, prevIndex);
-  }, [searchResults, searchIndex, selectMatch]);
+    const index =
+      searchIndex < 0 || searchIndex >= searchResults.length ? 0 : searchIndex;
+    const match = searchResults[index];
+    selectFiber(match.id, match.name);
+  }, [searchResults, searchIndex, deferredSearchText, selectFiber]);
 
   const showSearchInput = useCallback(() => setIsSearchInputVisible(true), []);
 
@@ -451,6 +457,7 @@ function ProfilerContextController({children}: Props): React.Node {
       searchIndex,
       goToNextSearchResult,
       goToPreviousSearchResult,
+      goToSearchResult,
     }),
     [
       selectedTabID,
@@ -492,6 +499,7 @@ function ProfilerContextController({children}: Props): React.Node {
       searchIndex,
       goToNextSearchResult,
       goToPreviousSearchResult,
+      goToSearchResult,
     ],
   );
 

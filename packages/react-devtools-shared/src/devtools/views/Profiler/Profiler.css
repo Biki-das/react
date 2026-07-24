@@ -128,20 +128,19 @@
   align-items: center;
 }
 
+/* Pinned to the bottom of the main view (like a Chrome-style find bar). */
 .SearchInputOverlay {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 3;
   display: flex;
   align-items: center;
-  width: 24rem;
-  max-width: calc(100% - 1rem);
   padding: 0.25rem 0.5rem;
   background-color: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: 0.25rem;
-  box-shadow: 0 2px 8px var(--color-shadow);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -2px 8px var(--color-shadow);
 }
 
 .LearnMoreLink {

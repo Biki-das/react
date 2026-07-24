@@ -21,6 +21,7 @@ export default function ProfilerSearchInput(): React.Node {
     searchIndex,
     goToNextSearchResult,
     goToPreviousSearchResult,
+    goToSearchResult,
     hideSearchInput,
   } = useContext(ProfilerContext);
 
@@ -29,6 +30,7 @@ export default function ProfilerSearchInput(): React.Node {
       autoFocus={true}
       goToNextResult={goToNextSearchResult}
       goToPreviousResult={goToPreviousSearchResult}
+      goToResult={goToSearchResult}
       onClose={hideSearchInput}
       placeholder="Search this commit (text or /regex/)"
       search={setSearchText}

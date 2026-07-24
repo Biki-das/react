@@ -184,7 +184,13 @@ function CommitFlamegraph({chartData, commitTree, height, width}: Props) {
     [hoveredFiberData],
   );
 
-  // Scroll the selected fiber into view (e.g. when navigating search results).
+  // Scroll the selected fiber's row into view when the selection changes
+  // (e.g. when navigating between search results). We use an effect because the
+  // selection is driven externally — via search navigation in ProfilerContext
+  // or a node click — and selectedChartNodeIndex is a derived value here, not
+  // something a local event handler sets; so we synchronize the imperative
+  // scroll with it. selectedChartNodeIndex falls back to 0 when nothing is
+  // selected, hence the selectedFiberID guard to avoid scrolling on deselect.
   const listRef = useRef<FixedSizeList | null>(null);
   useEffect(() => {
     if (selectedFiberID !== null && listRef.current !== null) {
