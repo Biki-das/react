@@ -105,7 +105,6 @@ test.describe('Profiler', () => {
   test('should allow searching for a component within the selected commit', async () => {
     runOnlyForReactRange('>=16.5');
 
-    
     async function waitForSearchResultsCount(expectedText) {
       return await page.waitForFunction(expected => {
         const {createTestNameSelector, findAllNodes} =
@@ -164,12 +163,10 @@ test.describe('Profiler', () => {
       );
     });
 
-   
     await focusProfilerSearch();
     await page.keyboard.insertText('ListItem');
     await waitForSearchResultsCount('1 | 4');
 
-    
     await devToolsUtils.clickButton(page, 'SnapshotSelector-NextButton');
     await waitForSearchResultsCount('1 | 5');
     await devToolsUtils.clickButton(page, 'SnapshotSelector-NextButton');
