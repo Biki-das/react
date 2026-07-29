@@ -29,11 +29,48 @@ import {createRegExp} from '../utils';
 import {logEvent} from 'react-devtools-shared/src/Logger';
 import {useCommitFilteringAndNavigation} from './useCommitFilteringAndNavigation';
 
-import type {CommitDataFrontend, ProfilingDataFrontend} from './types';
+import type {
+  CommitDataFrontend,
+  CommitTree,
+  CommitTreeNode,
+  ProfilingDataFrontend,
+} from './types';
 
 export type TabID = 'flame-chart' | 'ranked-chart' | 'timeline';
 
 type SearchResult = {id: number, name: string | null};
+
+function fiberMatchesQuery(node: CommitTreeNode, regExp: RegExp): boolean {
+  const {displayName, hocDisplayNames, key} = node;
+  return (
+    (displayName !== null && regExp.test(displayName)) ||
+    (hocDisplayNames !== null &&
+      hocDisplayNames.some(name => regExp.test(name))) ||
+    (key !== null && regExp.test(String(key)))
+  );
+}
+
+// Collect the fibers in a commit tree that match `text`, in tree (pre-order)
+// order. Kept module-level and pure so it isn't recreated on every render.
+function collectSearchMatches(
+  commitTree: CommitTree,
+  text: string,
+): Array<SearchResult> {
+  const regExp = createRegExp(text);
+  const matches: Array<SearchResult> = [];
+  const visit = (id: number) => {
+    const node = commitTree.nodes.get(id);
+    if (node == null) {
+      return;
+    }
+    if (fiberMatchesQuery(node, regExp)) {
+      matches.push({id, name: node.displayName});
+    }
+    node.children.forEach(visit);
+  };
+  visit(commitTree.rootID);
+  return matches;
+}
 
 export type Context = {
   // Which tab is selected in the Profiler UI?
@@ -95,6 +132,7 @@ export type Context = {
   setSearchText: (text: string) => void,
   searchResults: Array<SearchResult>,
   searchIndex: number,
+  searchIsPending: boolean,
   goToNextSearchResult(): void,
   goToPreviousSearchResult(): void,
   goToSearchResult: (index: number) => void,
@@ -274,8 +312,8 @@ function ProfilerContextController({children}: Props): React.Node {
     selectPrevCommitIndex,
   } = useCommitFilteringAndNavigation(commitData);
 
-  // Fibers in the selected commit matching `text`, in tree order.
-  // Always scoped to the current commit, never the whole trace.
+  // Fibers in the selected commit matching `text`, scoped to the current
+  // commit only (never the whole trace).
   const findMatches = useCallback(
     (text: string): Array<SearchResult> => {
       if (
@@ -286,31 +324,11 @@ function ProfilerContextController({children}: Props): React.Node {
       ) {
         return [];
       }
-
       const commitTree = profilerStore.profilingCache.getCommitTree({
         commitIndex: selectedCommitIndex,
         rootID,
       });
-      const regExp = createRegExp(text);
-      const matches: Array<SearchResult> = [];
-      const walk = (id: number) => {
-        const node = commitTree.nodes.get(id);
-        if (node == null) {
-          return;
-        }
-        const {displayName, hocDisplayNames, key} = node;
-        if (
-          (displayName !== null && regExp.test(displayName)) ||
-          (hocDisplayNames !== null &&
-            hocDisplayNames.some(name => regExp.test(name))) ||
-          (key !== null && regExp.test(String(key)))
-        ) {
-          matches.push({id, name: displayName});
-        }
-        node.children.forEach(walk);
-      };
-      walk(commitTree.rootID);
-      return matches;
+      return collectSearchMatches(commitTree, text);
     },
     [rootID, selectedCommitIndex, didRecordCommits, profilerStore],
   );
@@ -320,6 +338,7 @@ function ProfilerContextController({children}: Props): React.Node {
   // priority and never blocks typing. Deriving via a memo also keeps results
   // scoped to the current commit for free (findMatches tracks selectedCommitIndex).
   const deferredSearchText = useDeferredValue(searchText);
+  const searchIsPending = searchText !== deferredSearchText;
   const searchResults = useMemo<Array<SearchResult>>(
     () => findMatches(deferredSearchText),
     [findMatches, deferredSearchText],
@@ -358,22 +377,34 @@ function ProfilerContextController({children}: Props): React.Node {
     [],
   );
 
-  // Selection follows the current (results, index). Because results are
-  // produced at transition priority, selection reacts to them here rather than
-  // in the input handler; this also re-selects the match after switching
-  // commits, and clears a stale selection when a query has no matches.
-  useEffect(() => {
-    if (searchResults.length === 0) {
-      if (deferredSearchText !== '') {
-        selectFiber(null, null);
+  // Keep the selected fiber in sync with the current search match *during
+  // render* rather than in an effect, so results and selection commit together
+  // (no post-paint frame showing a stale/empty selection). This mirrors the
+  // existing prevProfilingData pattern above and follows
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  // Note: only the profiler's own selection state is updated here (a render is
+  // not allowed to dispatch into the Components tree), so search navigation
+  // intentionally does not sync selection to the Components tab.
+  const [prevSearchResults, setPrevSearchResults] = useState(searchResults);
+  const [prevSearchIndex, setPrevSearchIndex] = useState(searchIndex);
+  if (prevSearchResults !== searchResults || prevSearchIndex !== searchIndex) {
+    setPrevSearchResults(searchResults);
+    setPrevSearchIndex(searchIndex);
+    if (searchText !== '') {
+      if (searchResults.length === 0) {
+        selectFiberID(null);
+        selectFiberName(null);
+      } else {
+        const index =
+          searchIndex < 0 || searchIndex >= searchResults.length
+            ? 0
+            : searchIndex;
+        const match = searchResults[index];
+        selectFiberID(match.id);
+        selectFiberName(match.name);
       }
-      return;
     }
-    const index =
-      searchIndex < 0 || searchIndex >= searchResults.length ? 0 : searchIndex;
-    const match = searchResults[index];
-    selectFiber(match.id, match.name);
-  }, [searchResults, searchIndex, deferredSearchText, selectFiber]);
+  }
 
   const showSearchInput = useCallback(() => setIsSearchInputVisible(true), []);
 
@@ -455,6 +486,7 @@ function ProfilerContextController({children}: Props): React.Node {
       setSearchText,
       searchResults,
       searchIndex,
+      searchIsPending,
       goToNextSearchResult,
       goToPreviousSearchResult,
       goToSearchResult,
@@ -497,6 +529,7 @@ function ProfilerContextController({children}: Props): React.Node {
       setSearchText,
       searchResults,
       searchIndex,
+      searchIsPending,
       goToNextSearchResult,
       goToPreviousSearchResult,
       goToSearchResult,

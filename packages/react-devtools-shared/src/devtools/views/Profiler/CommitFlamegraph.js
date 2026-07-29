@@ -12,7 +12,7 @@ import {
   forwardRef,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -184,19 +184,21 @@ function CommitFlamegraph({chartData, commitTree, height, width}: Props) {
     [hoveredFiberData],
   );
 
-  // Scroll the selected fiber's row into view when the selection changes
-  // (e.g. when navigating between search results). We use an effect because the
-  // selection is driven externally — via search navigation in ProfilerContext
-  // or a node click — and selectedChartNodeIndex is a derived value here, not
-  // something a local event handler sets; so we synchronize the imperative
-  // scroll with it. selectedChartNodeIndex falls back to 0 when nothing is
-  // selected, hence the selectedFiberID guard to avoid scrolling on deselect.
+  // Scroll the selected fiber's row into view when the selection changes (e.g.
+  // when navigating between search results). Selection is driven externally
+  // (search nav in ProfilerContext, or a node click) and selectedChartNodeIndex
+  // is derived here — no local event handler sets it — so we sync the imperative
+  // scroll in a layout effect, which runs before paint to avoid a frame where
+  // the scroll position lags the selection.
   const listRef = useRef<FixedSizeList | null>(null);
-  useEffect(() => {
-    if (selectedFiberID !== null && listRef.current !== null) {
+  const itemIsSelected = selectedFiberID !== null;
+  useLayoutEffect(() => {
+    // selectedChartNodeIndex falls back to 0 when nothing is selected, so only
+    // scroll when a fiber is actually selected.
+    if (itemIsSelected && listRef.current !== null) {
       listRef.current.scrollToItem(selectedChartNodeIndex, 'smart');
     }
-  }, [selectedFiberID, selectedChartNodeIndex]);
+  }, [itemIsSelected, selectedChartNodeIndex]);
 
   return (
     <Tooltip label={tooltipLabel}>

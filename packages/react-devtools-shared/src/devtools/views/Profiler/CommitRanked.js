@@ -11,7 +11,7 @@ import * as React from 'react';
 import {
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -158,19 +158,21 @@ function CommitRanked({chartData, commitTree, height, width}: Props) {
     [hoveredFiberData],
   );
 
-  // Scroll the selected fiber's row into view when the selection changes
-  // (e.g. when navigating between search results). We use an effect because the
-  // selection is driven externally — via search navigation in ProfilerContext
-  // or a node click — and selectedFiberIndex is a derived value here, not
-  // something a local event handler sets; so we synchronize the imperative
-  // scroll with it. selectedFiberIndex falls back to 0 when nothing is
-  // selected, hence the selectedFiberID guard to avoid scrolling on deselect.
+  // Scroll the selected fiber's row into view when the selection changes (e.g.
+  // when navigating between search results). Selection is driven externally
+  // (search nav in ProfilerContext, or a node click) and selectedFiberIndex is
+  // derived here — no local event handler sets it — so we sync the imperative
+  // scroll in a layout effect, which runs before paint to avoid a frame where
+  // the scroll position lags the selection.
   const listRef = useRef<FixedSizeList | null>(null);
-  useEffect(() => {
-    if (selectedFiberID !== null && listRef.current !== null) {
+  const itemIsSelected = selectedFiberID !== null;
+  useLayoutEffect(() => {
+    // selectedFiberIndex falls back to 0 when nothing is selected, so only
+    // scroll when a fiber is actually selected.
+    if (itemIsSelected && listRef.current !== null) {
       listRef.current.scrollToItem(selectedFiberIndex, 'smart');
     }
-  }, [selectedFiberID, selectedFiberIndex]);
+  }, [itemIsSelected, selectedFiberIndex]);
 
   return (
     <Tooltip label={tooltipLabel}>

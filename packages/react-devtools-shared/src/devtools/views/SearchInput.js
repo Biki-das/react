@@ -25,6 +25,7 @@ type Props = {
   autoFocus?: boolean,
   goToNextResult: () => void,
   goToPreviousResult: () => void,
+  isPending?: boolean,
   onClose?: () => void,
   goToResult: (index: number) => void,
   placeholder: string,
@@ -39,6 +40,7 @@ export default function SearchInput({
   autoFocus,
   goToNextResult,
   goToPreviousResult,
+  isPending,
   onClose,
   goToResult,
   placeholder,
@@ -143,6 +145,13 @@ export default function SearchInput({
         ref={inputRef}
         value={searchText}
       />
+      {isPending === true && (
+        <span
+          className={styles.Spinner}
+          data-testname={testName ? `${testName}-Spinner` : undefined}
+          title="Searching…"
+        />
+      )}
       {!!searchText && (
         <React.Fragment>
           <span
