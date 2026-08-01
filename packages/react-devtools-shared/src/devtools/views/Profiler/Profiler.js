@@ -223,7 +223,7 @@ function Profiler(_: {}) {
                     isMac ? '⌘' : 'Ctrl+'
                   }F)`}
                   data-testname="ProfilerSearchButton">
-                  <ButtonIcon type="search" />
+                  <ButtonIcon type="find" />
                 </Button>
                 <SnapshotSelector />
               </Fragment>

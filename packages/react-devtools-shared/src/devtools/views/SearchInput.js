@@ -17,6 +17,7 @@ import {useEffect, useRef, useState} from 'react';
 import Button from './Button';
 import ButtonIcon from './ButtonIcon';
 import Icon from './Icon';
+import type {IconType} from './Icon';
 import AutoSizeInput from './Components/NativeStyleEditor/AutoSizeInput';
 
 import styles from './SearchInput.css';
@@ -25,6 +26,7 @@ type Props = {
   autoFocus?: boolean,
   goToNextResult: () => void,
   goToPreviousResult: () => void,
+  iconType?: IconType,
   isPending?: boolean,
   onClose?: () => void,
   goToResult: (index: number) => void,
@@ -40,6 +42,7 @@ export default function SearchInput({
   autoFocus,
   goToNextResult,
   goToPreviousResult,
+  iconType = 'search',
   isPending,
   onClose,
   goToResult,
@@ -135,7 +138,7 @@ export default function SearchInput({
 
   return (
     <div className={styles.SearchInput} data-testname={testName}>
-      <Icon className={styles.InputIcon} type="search" />
+      <Icon className={styles.InputIcon} type={iconType} />
       <input
         data-testname={testName ? `${testName}-Input` : undefined}
         className={styles.Input}

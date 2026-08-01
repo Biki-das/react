@@ -23,6 +23,7 @@ import NoCommitData from './NoCommitData';
 import CommitRankedListItem from './CommitRankedListItem';
 import HoveredFiberInfo from './HoveredFiberInfo';
 import {scale} from './utils';
+import {createRegExp} from '../utils';
 import {StoreContext} from '../context';
 import {SettingsContext} from '../Settings/SettingsContext';
 import {useHighlightHostInstance} from '../hooks';
@@ -36,9 +37,12 @@ import type {CommitTree} from './types';
 
 export type ItemData = {
   chartData: ChartData,
+  currentSearchMatchID: number | null,
+  matchedFiberIDs: Set<number>,
   onElementMouseEnter: (fiberData: TooltipFiberData) => void,
   onElementMouseLeave: () => void,
   scaleX: (value: number, fallbackValue: number) => number,
+  searchRegExp: RegExp | null,
   selectedFiberID: number | null,
   selectedFiberIndex: number,
   selectFiber: (id: number | null, name: string | null) => void,
@@ -105,7 +109,8 @@ function CommitRanked({chartData, commitTree, height, width}: Props) {
   const [hoveredFiberData, setHoveredFiberData] =
     useState<TooltipFiberData | null>(null);
   const {lineHeight} = useContext(SettingsContext);
-  const {selectedFiberID, selectFiber} = useContext(ProfilerContext);
+  const {selectedFiberID, selectFiber, searchText, searchResults, searchIndex} =
+    useContext(ProfilerContext);
   const {highlightHostInstance, clearHighlightHostInstance} =
     useHighlightHostInstance();
 
@@ -113,6 +118,20 @@ function CommitRanked({chartData, commitTree, height, width}: Props) {
     () => getNodeIndex(chartData, selectedFiberID),
     [chartData, selectedFiberID],
   );
+
+  // Search highlighting (see CommitFlamegraph for details).
+  const searchRegExp = useMemo(
+    () => (searchText === '' ? null : createRegExp(searchText)),
+    [searchText],
+  );
+  const matchedFiberIDs = useMemo(
+    () => new Set(searchResults.map(result => result.id)),
+    [searchResults],
+  );
+  const currentSearchMatchID =
+    searchIndex >= 0 && searchIndex < searchResults.length
+      ? searchResults[searchIndex].id
+      : null;
 
   const handleElementMouseEnter = useCallback(
     ({id, name}: $FlowFixMe) => {
@@ -130,9 +149,12 @@ function CommitRanked({chartData, commitTree, height, width}: Props) {
   const itemData = useMemo<ItemData>(
     () => ({
       chartData,
+      currentSearchMatchID,
+      matchedFiberIDs,
       onElementMouseEnter: handleElementMouseEnter,
       onElementMouseLeave: handleElementMouseLeave,
       scaleX: scale(0, chartData.nodes[selectedFiberIndex].value, 0, width),
+      searchRegExp,
       selectedFiberID,
       selectedFiberIndex,
       selectFiber,
@@ -140,8 +162,11 @@ function CommitRanked({chartData, commitTree, height, width}: Props) {
     }),
     [
       chartData,
+      currentSearchMatchID,
+      matchedFiberIDs,
       handleElementMouseEnter,
       handleElementMouseLeave,
+      searchRegExp,
       selectedFiberID,
       selectedFiberIndex,
       selectFiber,

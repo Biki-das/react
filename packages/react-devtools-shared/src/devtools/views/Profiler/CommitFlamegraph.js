@@ -24,6 +24,7 @@ import NoCommitData from './NoCommitData';
 import CommitFlamegraphListItem from './CommitFlamegraphListItem';
 import HoveredFiberInfo from './HoveredFiberInfo';
 import {scale} from './utils';
+import {createRegExp} from '../utils';
 import {useHighlightHostInstance} from '../hooks';
 import {StoreContext} from '../context';
 import {SettingsContext} from '../Settings/SettingsContext';
@@ -37,9 +38,12 @@ import type {CommitTree} from './types';
 
 export type ItemData = {
   chartData: ChartData,
+  currentSearchMatchID: number | null,
+  matchedFiberIDs: Set<number>,
   onElementMouseEnter: (fiberData: TooltipFiberData) => void,
   onElementMouseLeave: () => void,
   scaleX: (value: number, fallbackValue: number) => number,
+  searchRegExp: RegExp | null,
   selectedChartNode: ChartNode | null,
   selectedChartNodeIndex: number,
   selectFiber: (id: number | null, name: string | null) => void,
@@ -108,9 +112,25 @@ function CommitFlamegraph({chartData, commitTree, height, width}: Props) {
   const [hoveredFiberData, setHoveredFiberData] =
     useState<TooltipFiberData | null>(null);
   const {lineHeight} = useContext(SettingsContext);
-  const {selectFiber, selectedFiberID} = useContext(ProfilerContext);
+  const {selectFiber, selectedFiberID, searchText, searchResults, searchIndex} =
+    useContext(ProfilerContext);
   const {highlightHostInstance, clearHighlightHostInstance} =
     useHighlightHostInstance();
+
+  // Search highlighting: the regexp to highlight, the set of matching fibers,
+  // and the id of the current match (highlighted more prominently).
+  const searchRegExp = useMemo(
+    () => (searchText === '' ? null : createRegExp(searchText)),
+    [searchText],
+  );
+  const matchedFiberIDs = useMemo(
+    () => new Set(searchResults.map(result => result.id)),
+    [searchResults],
+  );
+  const currentSearchMatchID =
+    searchIndex >= 0 && searchIndex < searchResults.length
+      ? searchResults[searchIndex].id
+      : null;
 
   const selectedChartNodeIndex = useMemo<number>(() => {
     if (selectedFiberID === null) {
@@ -149,6 +169,8 @@ function CommitFlamegraph({chartData, commitTree, height, width}: Props) {
   const itemData = useMemo<ItemData>(
     () => ({
       chartData,
+      currentSearchMatchID,
+      matchedFiberIDs,
       onElementMouseEnter: handleElementMouseEnter,
       onElementMouseLeave: handleElementMouseLeave,
       scaleX: scale(
@@ -159,6 +181,7 @@ function CommitFlamegraph({chartData, commitTree, height, width}: Props) {
         0,
         width,
       ),
+      searchRegExp,
       selectedChartNode,
       selectedChartNodeIndex,
       selectFiber,
@@ -166,8 +189,11 @@ function CommitFlamegraph({chartData, commitTree, height, width}: Props) {
     }),
     [
       chartData,
+      currentSearchMatchID,
+      matchedFiberIDs,
       handleElementMouseEnter,
       handleElementMouseLeave,
+      searchRegExp,
       selectedChartNode,
       selectedChartNodeIndex,
       selectFiber,
