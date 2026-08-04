@@ -132,6 +132,7 @@ export default function ButtonIcon({className = '', type}: Props): React.Node {
       break;
     case 'find':
       pathData = PATH_FIND;
+      viewBox = '0 0 16 16';
       break;
     case 'settings':
       pathData = PATH_SETTINGS;
@@ -215,11 +216,7 @@ export default function ButtonIcon({className = '', type}: Props): React.Node {
       height="24"
       viewBox={viewBox}>
       <path d="M0 0h24v24H0z" fill="none" />
-      {typeof pathData === 'string' ? (
-        <path fill="currentColor" d={pathData} />
-      ) : (
-        pathData
-      )}
+      <path fill="currentColor" d={pathData} />
     </svg>
   );
 }
@@ -304,11 +301,15 @@ const PATH_SEARCH = `
   M23,13.9l-4.6,3.6l4.6,4.6l-1.1,1.1l-4.7-4.4l-3.3,4.4l-3.2-12.3L23,13.9z
 `;
 
-const PATH_FIND = `
-  M2,9.5 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0 z
-  M6,9.5 a3.5,3.5 0 1,1 7,0 a3.5,3.5 0 1,1 -7,0 z
-  M15.8,13.8 L22,20 A1.4,1.4 0 0,1 20,22 L13.8,15.8 Z
-`;
+// Magnifying glass (16x16 viewBox): lens ring, two "shine" detail marks, and a
+// rounded handle. Kept as separate sub-paths so their overlaps union instead of
+// canceling (which a single combined path would do under nonzero fill).
+// Magnifying glass (16x16 viewBox): a ring lens plus a rounded handle, drawn as
+// a single path. The lens hole comes from two concentric circles with opposite
+// winding; the handle is a rounded bar overlapping the lens at its lower-right.
+const PATH_FIND =
+  'M6.5 0.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9z' +
+  'M11.17 10.03l3.7 3.7a0.8 0.8 0 0 1-1.14 1.14l-3.7-3.7z';
 
 const PATH_SETTINGS = `
   M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49

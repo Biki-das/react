@@ -80,6 +80,7 @@ export default function Icon({
       break;
     case 'find':
       pathData = PATH_FIND;
+      viewBox = '0 0 16 16';
       break;
     case 'settings':
       pathData = PATH_SETTINGS;
@@ -165,13 +166,11 @@ const PATH_SEARCH = `
   5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z
 `;
 
-// A bold, rounded magnifying glass: thick ring lens (outer minus inner hole)
-// plus a rounded handle.
-const PATH_FIND = `
-  M2,9.5 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0 z
-  M6,9.5 a3.5,3.5 0 1,1 7,0 a3.5,3.5 0 1,1 -7,0 z
-  M15.8,13.8 L22,20 A1.4,1.4 0 0,1 20,22 L13.8,15.8 Z
-`;
+
+
+const PATH_FIND =
+  'M6.5 0.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9z' +
+  'M11.17 10.03l3.7 3.7a0.8 0.8 0 0 1-1.14 1.14l-3.7-3.7z';
 
 const PATH_RANKED_CHART = 'M3 5h18v3H3zM3 10.5h13v3H3zM3 16h8v3H3z';
 

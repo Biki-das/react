@@ -71,12 +71,7 @@ function Profiler(_: {}) {
       }
       event.preventDefault();
       event.stopPropagation();
-    } else if (
-      isLegacyProfilerSelected &&
-      didRecordCommits &&
-      correctModifier &&
-      event.key === 'f'
-    ) {
+    } else if (didRecordCommits && correctModifier && event.key === 'f') {
       // Cmd+F (Mac) or Ctrl+F (Windows/Linux) to search components in the commit
       showSearchInput();
       event.preventDefault();
@@ -86,11 +81,6 @@ function Profiler(_: {}) {
       hideSearchInput();
       event.preventDefault();
       event.stopPropagation();
-    } else if (
-      isLegacyProfilerSelected &&
-      didRecordCommits &&
-      selectedCommitIndex !== null
-    ) {
     } else if (didRecordCommits && selectedCommitIndex !== null) {
       // Cmd+Left/Right (Mac) or Ctrl+Left/Right (Windows/Linux) to navigate commits
       if (
@@ -206,13 +196,11 @@ function Profiler(_: {}) {
             )}
           </div>
           <div className={styles.Content}>
-            {isLegacyProfilerSelected &&
-              didRecordCommits &&
-              isSearchInputVisible && (
-                <div className={styles.SearchInputOverlay}>
-                  <ProfilerSearchInput />
-                </div>
-              )}
+            {didRecordCommits && isSearchInputVisible && (
+              <div className={styles.SearchInputOverlay}>
+                <ProfilerSearchInput />
+              </div>
+            )}
             {view}
             <ModalDialog />
           </div>
