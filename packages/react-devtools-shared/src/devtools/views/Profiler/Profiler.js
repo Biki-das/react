@@ -18,8 +18,6 @@ import ClearProfilingDataButton from './ClearProfilingDataButton';
 import CommitFlamegraph from './CommitFlamegraph';
 import CommitRanked from './CommitRanked';
 import RootSelector from './RootSelector';
-import {Timeline} from 'react-devtools-timeline/src/Timeline';
-import SidebarEventInfo from './SidebarEventInfo';
 import RecordToggle from './RecordToggle';
 import ReloadAndProfileButton from './ReloadAndProfileButton';
 import ProfilingImportExportButtons from './ProfilingImportExportButtons';
@@ -35,8 +33,6 @@ import SettingsModal from 'react-devtools-shared/src/devtools/views/Settings/Set
 import SettingsModalContextToggle from 'react-devtools-shared/src/devtools/views/Settings/SettingsModalContextToggle';
 import {SettingsModalContextController} from 'react-devtools-shared/src/devtools/views/Settings/SettingsModalContext';
 import portaledContent from '../portaledContent';
-import {StoreContext} from '../context';
-import {TimelineContext} from 'react-devtools-timeline/src/TimelineContext';
 
 import styles from './Profiler.css';
 
@@ -63,13 +59,6 @@ function Profiler(_: {}) {
     showSearchInput,
     hideSearchInput,
   } = useContext(ProfilerContext);
-
-  const {file: timelineTraceEventData, searchInputContainerRef} =
-    useContext(TimelineContext);
-
-  const {supportsTimeline} = useContext(StoreContext);
-
-  const isLegacyProfilerSelected = selectedTabID !== 'timeline';
 
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
     const correctModifier = isMac ? event.metaKey : event.ctrlKey;
@@ -102,6 +91,7 @@ function Profiler(_: {}) {
       didRecordCommits &&
       selectedCommitIndex !== null
     ) {
+    } else if (didRecordCommits && selectedCommitIndex !== null) {
       // Cmd+Left/Right (Mac) or Ctrl+Left/Right (Windows/Linux) to navigate commits
       if (
         correctModifier &&
@@ -133,16 +123,13 @@ function Profiler(_: {}) {
   }, []);
 
   let view = null;
-  if (didRecordCommits || selectedTabID === 'timeline') {
+  if (didRecordCommits) {
     switch (selectedTabID) {
       case 'flame-chart':
         view = <CommitFlamegraph />;
         break;
       case 'ranked-chart':
         view = <CommitRanked />;
-        break;
-      case 'timeline':
-        view = <Timeline />;
         break;
       default:
         break;
@@ -151,8 +138,6 @@ function Profiler(_: {}) {
     view = <RecordingInProgress />;
   } else if (isProcessingData) {
     view = <ProcessingData />;
-  } else if (timelineTraceEventData) {
-    view = <OnlyTimelineData />;
   } else if (supportsProfiling) {
     view = <NoProfilingData />;
   } else {
@@ -178,9 +163,6 @@ function Profiler(_: {}) {
           }
         }
         break;
-      case 'timeline':
-        sidebar = <SidebarEventInfo />;
-        break;
       default:
         break;
     }
@@ -200,19 +182,13 @@ function Profiler(_: {}) {
               currentTab={selectedTabID}
               id="Profiler"
               selectTab={selectTab}
-              tabs={supportsTimeline ? tabsWithTimeline : tabs}
+              tabs={tabs}
               type="profiler"
             />
             <RootSelector />
             <div className={styles.Spacer} />
-            {!isLegacyProfilerSelected && (
-              <div
-                ref={searchInputContainerRef}
-                className={styles.TimelineSearchInputContainer}
-              />
-            )}
             <SettingsModalContextToggle />
-            {isLegacyProfilerSelected && didRecordCommits && (
+            {didRecordCommits && (
               <Fragment>
                 <div className={styles.VRule} />
                 <Button
@@ -248,15 +224,6 @@ function Profiler(_: {}) {
   );
 }
 
-const OnlyTimelineData = () => (
-  <div className={styles.Column}>
-    <div className={styles.Header}>Timeline only</div>
-    <div className={styles.Row}>
-      The current profile contains only Timeline data.
-    </div>
-  </div>
-);
-
 const tabs = [
   {
     id: 'flame-chart',
@@ -269,17 +236,6 @@ const tabs = [
     icon: 'ranked-chart',
     label: 'Ranked',
     title: 'Ranked chart',
-  },
-];
-
-const tabsWithTimeline = [
-  ...tabs,
-  null, // Divider/separator
-  {
-    id: 'timeline',
-    icon: 'timeline',
-    label: 'Timeline',
-    title: 'Timeline',
   },
 ];
 
